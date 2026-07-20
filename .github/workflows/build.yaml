@@ -51,9 +51,16 @@ jobs:
           cp -rv ../main-repo/srcpkgs/ayugram-desktop srcpkgs/
         working-directory: void-packages
 
+      - name: Prepare unprivileged user
+        run: |
+          # Create a non-root user and give them ownership of the entire workspace
+          useradd -m builder
+          chown -R builder:builder .
+
       - name: Build AyuGram
         run: |
-          /bin/bash ./xbps-src -j$(nproc) pkg ayugram-desktop
+          # Run the build process as the newly created 'builder' user
+          su builder -c "/bin/bash ./xbps-src -j$(nproc) pkg ayugram-desktop"
         working-directory: void-packages
 
       - name: Index packages
