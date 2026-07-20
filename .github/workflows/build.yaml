@@ -17,6 +17,8 @@ jobs:
       ARCH: x86_64
       BOOTSTRAP: x86_64
       TEST: 0
+      # This MUST be in the environment to bypass the root check
+      XBPS_ALLOW_CHROOT_BREAKOUT: yes
 
     steps:
       - name: Configure mirrors
@@ -42,7 +44,7 @@ jobs:
       - name: Configure ethereal mode
         run: |
           mkdir -p etc
-          echo -e "XBPS_ALLOW_CHROOT_BREAKOUT=yes\nXBPS_CHROOT_CMD=ethereal\nXBPS_MIRROR=https://repo-fastly.voidlinux.org/current" >> etc/conf
+          echo -e "XBPS_CHROOT_CMD=ethereal\nXBPS_MIRROR=https://repo-fastly.voidlinux.org/current" >> etc/conf
           ln -s / masterdir
         working-directory: void-packages
 
@@ -51,16 +53,9 @@ jobs:
           cp -rv ../main-repo/srcpkgs/ayugram-desktop srcpkgs/
         working-directory: void-packages
 
-      - name: Prepare unprivileged user
-        run: |
-          # Create a non-root user and give them ownership of the entire workspace
-          useradd -m builder
-          chown -R builder:builder .
-
       - name: Build AyuGram
         run: |
-          # Run the build process as the newly created 'builder' user
-          su builder -c "/bin/bash ./xbps-src -j$(nproc) pkg ayugram-desktop"
+          /bin/bash ./xbps-src -j$(nproc) pkg ayugram-desktop
         working-directory: void-packages
 
       - name: Index packages
