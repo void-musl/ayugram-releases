@@ -12,12 +12,13 @@ jobs:
   build:
     name: Build AyuGram x86_64
     runs-on: ubuntu-latest
-    container: ghcr.io/void-linux/void-glibc-full
+    container:
+      image: ghcr.io/void-linux/void-glibc-full
+      options: --privileged
     env:
       ARCH: x86_64
       BOOTSTRAP: x86_64
       TEST: 0
-      # This MUST be in the environment to bypass the root check
       XBPS_ALLOW_CHROOT_BREAKOUT: yes
 
     steps:
