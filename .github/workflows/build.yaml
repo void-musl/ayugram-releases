@@ -59,9 +59,14 @@ jobs:
           /bin/bash ./xbps-src -j$(nproc) pkg ayugram-desktop
         working-directory: void-packages
 
-      - name: Index packages
+      - name: Sign & Index packages
+        env:
+          PRIV_KEY: ${{ secrets.PRIV_KEY }}
         run: |
           xbps-rindex -a *.xbps
+          xbps-rindex -s --signedby "anrix <iz@anrix.org>" --privkey private.pem $PWD
+          xbps-rindex -S --privkey private.pem *.xbps
+          rm private.pem
         working-directory: void-packages/hostdir/binpkgs
 
       - name: Upload artifacts
