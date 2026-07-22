@@ -1,0 +1,40 @@
+name: Build AyuGram
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'srcpkgs/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build AyuGram x86_64
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/void-linux/void-musl-full
+      options: --privileged
+    env:
+      ARCH: x86_64-musl
+      BOOTSTRAP: x86_64-musl
+      TEST: 0
+      XBPS_ALLOW_CHROOT_BREAKOUT: yes
+
+    steps:
+      - name: Configure mirrors
+        run: |
+          mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
+          sed -i 's|https://repo-default.voidlinux.org|https://repo-fastly.voidlinux.org|g' /etc/xbps.d/*-repository-*.conf
+          xbps-install -S
+
+      - name: Install dependencies
+        run: |
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y nodejs-lts git curl base-devel bash
+
+      - name: Checkout your repo
+        uses: classabbyamp/treeless-checkout-action@v1
+      
+      - name: Show repo contents
+        run: |
+          ls -lR
