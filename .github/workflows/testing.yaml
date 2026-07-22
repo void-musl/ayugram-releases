@@ -16,9 +16,9 @@ jobs:
           echo 'fo binary' > fo-vx.y.z.xbps
           echo 'fo signature' > fo-vx.y.z.sig2
       - name: Checkout
-        uses: void-musl/upload-release@v1.0.0
+        uses: void-musl/upload-release@v1.0.1
         with:
           tag: 'build-${{ github.run_number }}'
           rel_name: 'fo build'
           file_pat: '*.xbps *.sig2'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
