@@ -1,4 +1,4 @@
-name: Build AyuGram
+name: Testing code
 
 on:
   push:
