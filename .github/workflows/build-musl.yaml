@@ -48,7 +48,7 @@ jobs:
 
       - name: Merge templates
         run: |
-          cp -rv ./srcpkgs/ayugram-desktop srcpkgs/
+          cp -rv ../srcpkgs/ayugram-desktop srcpkgs/
         working-directory: void-packages
 
       - name: Build AyuGram
