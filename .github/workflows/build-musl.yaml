@@ -16,8 +16,8 @@ jobs:
       image: ghcr.io/void-linux/void-musl-full
       options: --privileged
     env:
-      ARCH: x86_64
-      BOOTSTRAP: x86_64
+      ARCH: x86_64-musl
+      BOOTSTRAP: x86_64-musl
       TEST: 0
       XBPS_ALLOW_CHROOT_BREAKOUT: yes
 
@@ -48,7 +48,7 @@ jobs:
 
       - name: Merge templates
         run: |
-          cp -rv ../main-repo/srcpkgs/ayugram-desktop srcpkgs/
+          cp -rv ./srcpkgs/ayugram-desktop srcpkgs/
         working-directory: void-packages
 
       - name: Build AyuGram
