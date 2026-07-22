@@ -1,0 +1,78 @@
+name: Build AyuGram
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'srcpkgs/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build AyuGram x86_64
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/void-linux/void-musl-full
+      options: --privileged
+    env:
+      ARCH: x86_64
+      BOOTSTRAP: x86_64
+      TEST: 0
+      XBPS_ALLOW_CHROOT_BREAKOUT: yes
+
+    steps:
+      - name: Configure mirrors
+        run: |
+          mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
+          sed -i 's|https://repo-default.voidlinux.org|https://repo-fastly.voidlinux.org|g' /etc/xbps.d/*-repository-*.conf
+          xbps-install -S
+
+      - name: Install dependencies
+        run: |
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y nodejs git curl base-devel bash
+
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+        with:
+          path: main-repo
+          persist-credentials: false
+
+      - name: Checkout void-packages
+        run: |
+          git clone --depth=1 https://github.com/void-linux/void-packages.git void-packages
+
+      - name: Configure ethereal mode
+        run: |
+          mkdir -p etc
+          echo -e "XBPS_CHROOT_CMD=ethereal\nXBPS_MIRROR=https://repo-fastly.voidlinux.org/current" >> etc/conf
+          ln -s / masterdir
+        working-directory: void-packages
+
+      - name: Merge templates
+        run: |
+          cp -rv ../main-repo/srcpkgs/ayugram-desktop srcpkgs/
+        working-directory: void-packages
+
+      - name: Build AyuGram
+        run: |
+          /bin/bash ./xbps-src -j$(nproc) pkg ayugram-desktop
+        working-directory: void-packages
+
+      - name: Sign & Index packages
+        env:
+          PRIV_KEY: ${{ secrets.PRIV_KEY }}
+        run: |
+          echo "$PRIV_KEY" > private.pem
+          xbps-rindex -a *.xbps
+          xbps-rindex -s --signedby "anrix <iz@anrix.org>" --privkey private.pem $PWD
+          xbps-rindex -S --privkey private.pem *.xbps
+          rm private.pem
+        working-directory: void-packages/hostdir/binpkgs
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ayugram-packages
+          path: void-packages/hostdir/binpkgs/*
+          retention-days: 1
