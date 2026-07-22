@@ -8,6 +8,10 @@ on:
       - 'srcpkgs/**'
   workflow_dispatch:
 
+# REQUIRED: Grants the GITHUB_TOKEN permission to push releases
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build AyuGram x86_64
@@ -29,8 +33,9 @@ jobs:
           xbps-install -S
 
       - name: Install dependencies
+        # Added 'jq' to the end of this list, as it is required for the API requests
         run: |
-          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y nodejs-lts git curl base-devel bash
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y nodejs-lts git curl base-devel bash jq
 
       - name: Checkout your repo
         uses: classabbyamp/treeless-checkout-action@v1
@@ -38,3 +43,60 @@ jobs:
       - name: Show repo contents
         run: |
           ls -lR
+
+      - name: Create dummy packages to test the upload
+        run: |
+          echo "Test xbps binary" > ayugram-test-1.0.xbps
+          echo "Test signature" > ayugram-test-1.0.xbps.sig2
+          echo "Test repodata" > ayugram-test-repodata
+
+      - name: Create GitHub Release and Upload Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Generate a unique tag based on the workflow run number
+          TAG="test-build-${{ github.run_number }}"
+          
+          # 1. Generate the JSON payload for the GitHub Release
+          body=$(jq -n \
+            --arg tag "$TAG" \
+            --arg name "AyuGram Desktop v${TAG} (Test)" \
+            --arg body "AyuGram Desktop Test Release — Built via GitHub Actions [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" \
+            '{tag_name: $tag, name: $name, body: $body, draft: false, prerelease: false}')
+
+          # 2. Create the Release via GitHub REST API v3
+          response=$(curl --silent --show-error --fail-with-body --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --header "Content-Type: application/json" \
+            --data "$body" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/releases")
+            
+          release_id=$(echo "$response" | jq -r '.id')
+          upload_url_template=$(echo "$response" | jq -r '.upload_url')
+          
+          # Strip the {?name,label} template variables from the end of the URL
+          upload_url="${upload_url_template%\{*}"
+
+          echo "GitHub Release created successfully with ID: $release_id"
+          echo "Asset Upload Endpoint: $upload_url"
+
+          # 3. Upload the Void Linux files directly to the Release
+          for file in *.xbps *.xbps.sig2 *-repodata; do
+            [ -f "$file" ] || continue
+            echo "Uploading physical asset: $file"
+            
+            # URL encode the filename to handle any special characters safely
+            encoded_name=$(printf '%s' "$file" | jq -sRr @uri)
+            
+            curl --silent --show-error --fail-with-body --request POST \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              --header "Content-Type: application/octet-stream" \
+              --data-binary @"$file" \
+              "${upload_url}?name=${encoded_name}"
+              
+            echo "Successfully uploaded $file"
+          done
