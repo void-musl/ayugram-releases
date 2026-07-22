@@ -30,7 +30,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y nodejs-lts git curl base-devel bash
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y nodejs-lts git curl base-devel bash jq
 
       - name: Checkout your repo
         uses: classabbyamp/treeless-checkout-action@v1
@@ -65,11 +65,13 @@ jobs:
           xbps-rindex -s --signedby "anrix <iz@anrix.org>" --privkey private.pem $PWD
           xbps-rindex -S --privkey private.pem *.xbps
           rm private.pem
+          mv *.xbps *.sig2 *-repodata $GITHUB_WORKSPACE/
         working-directory: void-packages/hostdir/binpkgs
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload to release
+        uses: void-musl/upload-release@v1.0.2
         with:
-          name: ayugram-packages
-          path: void-packages/hostdir/binpkgs/*
-          retention-days: 1
+          tag: 'build-${{ github.run_number }}'
+          rel_name: 'Automate build'
+          file_pat: '*.xbps *.sig2 *-repodata'
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
