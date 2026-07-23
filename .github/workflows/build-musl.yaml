@@ -12,6 +12,8 @@ jobs:
   build:
     name: Build AyuGram x86_64
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     container:
       image: ghcr.io/void-linux/void-musl-full
       options: --privileged
